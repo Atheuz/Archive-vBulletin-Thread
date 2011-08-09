@@ -2,6 +2,7 @@
 
 import http
 import re
+import os
 import argparse
 
 def login(user, password):
@@ -82,7 +83,7 @@ def get_thread(thread_id):
     post_number = 1
 
     for j in pages:
-        print j
+        print "At page #%d" % j
         k = new_urls % (thread_id, j)
         content_from_posts = http.get_html(k, cookies=True)
 
@@ -192,7 +193,7 @@ def create_xml(info, post_data):
 
 
     file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
-    out = open("%s.xml" % file_title, "w")
+    out = open("output\%s.xml" % file_title, "w")
     doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
     print 'Done.'
 
@@ -206,6 +207,11 @@ def main():
     args = parser.parse_args()
     thread_id = args.thread_id
     thread_url = args.thread_url
+
+    try:
+        os.mkdir("output")
+    except WindowsError:
+        pass
 
     if thread_id is not None and thread_url is None:
         info, post_data = get_thread(thread_id)
