@@ -126,6 +126,8 @@ def create_xml(info, post_data):
     thread_element = http.etree.Element("thread", id="%s" % info['thread_id'])
 
     doc = http.etree.ElementTree(thread_element)
+    root = doc.getroot()
+    root.addprevious(http.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
 
     breadcrumbs_element = http.etree.Element("breadcrumbs")
     thread_element.append(breadcrumbs_element)
