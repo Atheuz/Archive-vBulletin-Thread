@@ -6,42 +6,50 @@
             <head>
                 <style type="text/css">
                     body {
-                        color:#DDDDDD;
-                        background-color:#434343;
+                        color:GhostWhite;
+                        background-color:black;
                         text-align:justify;
                     }
                     * {
-                        font-family: Calibri;
+                        font-family:Calibri;
                     }
                     a {
-                        color:#4F94CD;
+                        color:GhostWhite;
                     }
                     a:hover {
                         text-decoration:none;
                     }
                     a:active {
-                        color:#666666;
+                        color:GhostWhite;
                         text-decoration:none;
                     }
-                    td {
-                        background-color:#393939;
+                    tr.odd {
+                        background-color:#778899;
                     }
-                    td.author {
-                        width:5%;
+                    tr.even {
+                        background-color:#92A6BB;
+                    }
+                    td.info1 {
+                        padding:0.33em;
+                        width:12.5%;
                         border: 1px solid black;
                     }
-                    td.date {
-                        width:10%;
+                    td.info2 {
+                        padding:0.33em;
+                        width:6.5%;
                         border: 1px solid black;
                     }
                     td.content {
-                        padding:0.33em;
-                        width:85%;
+                        padding:0.5em;
+                        width:80%;
                         border: 1px solid black;
-                    }
+                        }
                     p {
                         margin:0.25em 0;
-                    }    
+                    }
+                    h2 {
+                        text-align:center;
+                    }
                 </style>
             </head>
             <body>
@@ -56,42 +64,86 @@
                         </xsl:if>
                     </xsl:for-each>
                 </h2>
-                <p>
-                    <xsl:text>Locked: </xsl:text>
-                    <xsl:value-of select="thread/locked"/>
-                </p>
-                <p>
-                    <xsl:text>Pages: </xsl:text>
-                    <xsl:value-of select="thread/pages"/>
-                </p>
-                <a>
-                    <xsl:attribute name="href"><xsl:value-of select="thread/url"/></xsl:attribute>
-                    <xsl:text>Thread URL</xsl:text>
-                </a>
-
+                <table>
+                    <tr>
+                        <td>
+                            <xsl:text>Locked: </xsl:text>
+                            <xsl:value-of select="thread/locked"/>
+                            <xsl:text> | </xsl:text>
+                        </td>
+                        <td>
+                            <xsl:text>Pages: </xsl:text>
+                            <xsl:value-of select="thread/pages"/>
+                            <xsl:text> | </xsl:text>
+                        </td>
+                        <td>
+                            <a>
+                                <xsl:attribute name="href"><xsl:value-of select="thread/url"/></xsl:attribute>
+                                <xsl:text>Thread URL</xsl:text>
+                            </a>
+                        </td>
+                    </tr>
+                </table>
                 <table>
                     <xsl:for-each select="thread/posts/post">
-                        <tr>
-                            <td class="author">
-                                <xsl:value-of select="author"/>
-                                <br />
-                                <xsl:text>Date: </xsl:text>
-                                <xsl:value-of select="date"/>
-                            </td>
-                            <td class="date">
-                                <xsl:text>Post: </xsl:text>
-                                <xsl:value-of select="number"/>
-                                <br />
-                                <xsl:text>Page: </xsl:text>
-                                <xsl:value-of select="page"/>
-                                <br />
-                                <xsl:text>ID: </xsl:text>
-                                <xsl:value-of select="@id"/>
-                            </td>
-                            <td class="content">
-                                <xsl:value-of select="content"/>
-                            </td>
-                        </tr>
+                        <xsl:if test="position() mod 2 = 1">
+                            <tr class="odd">
+                                <td class="info1">
+                                    <a>
+                                        <xsl:attribute name="href">
+                                            <xsl:text>http://forums.somethingawful.com/member.php?action=getinfo&amp;username=</xsl:text>
+                                            <xsl:value-of select="author"/>
+                                        </xsl:attribute>
+                                        <xsl:value-of select="author"/>
+                                    </a>
+                                    <br />
+                                    <xsl:text>Date: </xsl:text>
+                                    <xsl:value-of select="date"/>
+                                </td>
+                                <td class="info2">
+                                    <xsl:text>Post: </xsl:text>
+                                    <xsl:value-of select="number"/>
+                                    <br />
+                                    <xsl:text>Page: </xsl:text>
+                                    <xsl:value-of select="page"/>
+                                    <br />
+                                    <xsl:text>ID: </xsl:text>
+                                    <xsl:value-of select="@id"/>
+                                </td>
+                                <td class="content">
+                                    <xsl:value-of select="content"/>
+                                </td>
+                            </tr>
+                        </xsl:if>
+                        <xsl:if test="position() mod 2 = 0">
+                            <tr class="even">
+                                <td class="info1">
+                                    <a>
+                                        <xsl:attribute name="href">
+                                            <xsl:text>http://forums.somethingawful.com/member.php?action=getinfo&amp;username=</xsl:text>
+                                            <xsl:value-of select="author"/>
+                                        </xsl:attribute>
+                                        <xsl:value-of select="author"/>
+                                    </a>
+                                    <br />
+                                    <xsl:text>Date: </xsl:text>
+                                    <xsl:value-of select="date"/>
+                                </td>
+                                <td class="info2">
+                                    <xsl:text>Post: </xsl:text>
+                                    <xsl:value-of select="number"/>
+                                    <br />
+                                    <xsl:text>Page: </xsl:text>
+                                    <xsl:value-of select="page"/>
+                                    <br />
+                                    <xsl:text>ID: </xsl:text>
+                                    <xsl:value-of select="@id"/>
+                                </td>
+                                <td class="content">
+                                    <xsl:value-of select="content"/>
+                                </td>
+                            </tr>
+                        </xsl:if>
                     </xsl:for-each>
                 </table>
             </body>
