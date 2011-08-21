@@ -3,6 +3,7 @@
 import http
 import re
 import os
+from lxml.html.clean import clean_html
 import argparse
 
 def login(user, password):
@@ -23,6 +24,7 @@ def get_thread(thread_id):
 
     thread_url = "http://forums.somethingawful.com/showthread.php?threadid=%s" % thread_id
     content = http.get_html(thread_url, cookies=True)
+    content = clean_html(content)
 
     breadcrumbs = content.xpath('///div[@class="breadcrumbs"][1]//span[@class="mainbodytextlarge"]//a')
     if len(breadcrumbs) == 4:
@@ -93,12 +95,14 @@ def get_thread(thread_id):
         dates = content_from_posts.xpath('//td[@class="postdate"]')
 
         for i in range(0, len(posts)):
-            current_post = posts[i].text_content()
-            current_post = current_post.strip().encode('ascii', 'ignore')
-            current_post = current_post.replace('\n', ' ')
-            current_post = current_post.replace('\r', ' ')
-            current_post = current_post.replace('\x00', '')
-            current_post = ' '.join(current_post.split())
+            current_post = http.html.tostring(posts[i], pretty_print=True,
+                    encoding='ascii')
+            #current_post = posts[i].text_content()
+            #current_post = current_post.strip().encode('ascii', 'ignore')
+            #current_post = current_post.replace('\n', ' ')
+            #current_post = current_post.replace('\r', ' ')
+            #current_post = current_post.replace('\x00', '')
+            #current_post = ' '.join(current_post.split())
             post_list.append(current_post)
         for i in range(0, len(ids)):
             id_list.append(re.search('(?<=#post)\w+', ids[i]).group())
