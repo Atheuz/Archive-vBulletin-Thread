@@ -1,7 +1,9 @@
-output/*
 *.swp
 *.pyc
 *.pyo
 *.bat
 *.log
 *.xml
+*.rar
+*.zip
+*.txt

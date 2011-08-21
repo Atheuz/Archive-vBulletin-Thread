@@ -4,6 +4,7 @@ import http
 import re
 import os
 from lxml.html.clean import clean_html
+from lxml.html.clean import Cleaner
 import argparse
 
 def login(user, password):
@@ -89,27 +90,28 @@ def get_thread(thread_id):
         k = new_urls % (thread_id, j)
         content_from_posts = http.get_html(k, cookies=True)
 
-        posts = content_from_posts.xpath('//td[@class="postbody"]')
-        ids = content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href')
-        authors = content_from_posts.xpath('//dl[@class="userinfo"]/dt') # '//dl[@class="userinfo"]/dt[@class="author"]' breaks on moderator
-        dates = content_from_posts.xpath('//td[@class="postdate"]')
 
-        for i in range(0, len(posts)):
-            current_post = http.html.tostring(posts[i], pretty_print=True,
-                    encoding='ascii')
-            #current_post = posts[i].text_content()
-            #current_post = current_post.strip().encode('ascii', 'ignore')
-            #current_post = current_post.replace('\n', ' ')
-            #current_post = current_post.replace('\r', ' ')
-            #current_post = current_post.replace('\x00', '')
-            #current_post = ' '.join(current_post.split())
+        for i in content_from_posts.xpath('//td[@class="postbody"]'):
+            #cleaner = Cleaner(style=True, comments=True, scripts=True,
+            #        javascript=True, page_structure=False, links=False)
+            #i = cleaner.clean_html(i)
+            i = clean_html(i)
+            i.tag = 'div'
+            del i.attrib['class']
+            current_post = http.html.tostring(i, encoding='ascii')
+            current_post = current_post.replace('\r', '')
+            current_post = current_post.replace('\n', '')
+            current_post = current_post.replace('\t', '')
             post_list.append(current_post)
-        for i in range(0, len(ids)):
-            id_list.append(re.search('(?<=#post)\w+', ids[i]).group())
-        for i in range(0, len(authors)):
-            author_list.append(authors[i].text_content().strip())
-        for i in range(0, len(dates)):
-            date_list.append(re.search('\w{3}.+', dates[i].text_content().strip()).group())
+
+        for i in content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href'):
+            id_list.append(re.search('(?<=#post)\w+', i).group())
+
+        for i in content_from_posts.xpath('//dl[@class="userinfo"]/dt'):
+            author_list.append(i.text_content().strip())
+
+        for i in content_from_posts.xpath('//td[@class="postdate"]'):
+            date_list.append(re.search('\w{3}.+', i.text_content().strip()).group())
 
         for i in range(0, len(post_list)):
             post_dicts.append({'post_content': post_list[i], 'post_id':
