@@ -93,20 +93,26 @@ def get_thread(thread_id):
 
 
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
-            cleaner = Cleaner(style=True, comments=True, scripts=True,
-                    javascript=True, page_structure=True, links=False)
-            #i = cleaner.clean_html(i)
-            i = clean_html(i)
-            i.tag = 'div'
-            del i.attrib['class']
-            current_post = http.html.tostring(i, encoding='ascii')
-            current_post = current_post.replace('\r', '')
-            current_post = current_post.replace('\n', '')
-            current_post = current_post.replace('\t', '')
-            parser = http.html.HTMLParser()
-            tree = http.html.parse(StringIO(current_post), parser)
-            tree = cleaner.clean_html(tree)
-            result = http.html.tostring(tree.getroot(), pretty_print=True, method="html")
+            current_post = i.text_content()
+            current_post = current_post.strip().encode('ascii', 'ignore')
+            current_post = current_post.replace('\n', ' ')
+            current_post = current_post.replace('\r', ' ')
+            current_post = current_post.replace('\x00', '')
+            result = ' '.join(current_post.split())
+
+#            cleaner = Cleaner(style=True, comments=True, scripts=True,
+#                    javascript=True, page_structure=True, links=False)
+#            i = clean_html(i)
+#            i.tag = 'div'
+#            del i.attrib['class']
+#            current_post = http.html.tostring(i, encoding='ascii')
+#            current_post = current_post.replace('\r', '')
+#            current_post = current_post.replace('\n', '')
+#            current_post = current_post.replace('\t', '')
+#            parser = http.html.HTMLParser()
+#            tree = http.html.parse(StringIO(current_post), parser)
+#            tree = cleaner.clean_html(tree)
+#            result = http.html.tostring(tree.getroot(), pretty_print=True, method="html")
             post_list.append(result)
 
         for i in content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href'):
