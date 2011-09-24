@@ -207,7 +207,7 @@ def create_xml(info, post_data):
         post_element.append(date_element)
 
         content_text = str(post_data[i]['post_content']).encode('ascii', 'ignore')
-        content_text = http.etree.CDATA(content_text)
+        #content_text = http.etree.CDATA(content_text)
         content_element = http.etree.Element("content")
         content_element.text = content_text
         post_element.append(content_element)
