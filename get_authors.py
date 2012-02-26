@@ -23,7 +23,7 @@ def get_regdates(filename):
     dates = [x[1] for x in com]
     years = [int(x[-4::]) for x in dates]
     #print sorted(years, key=lambda x: x)
-    #s = 0
+    s = 0
     for i in Counter(years).most_common(10):
         print i[0],i[1]
         s += i[1]
