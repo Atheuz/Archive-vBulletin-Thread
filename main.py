@@ -86,6 +86,7 @@ def get_thread(thread_id):
     post_list = []
     id_list = []
     author_list = []
+    reg_list = []
     date_list = []
 
     post_dicts = []
@@ -131,15 +132,24 @@ def get_thread(thread_id):
         for i in content_from_posts.xpath('//td[@class="postdate"]'):
             date_list.append(re.search('\w{3}.+', i.text_content().strip()).group())
 
+        for i in content_from_posts.xpath('//dl[@class="userinfo"]/dd[@class="registered"]'):
+            reg_list.append(i.text_content().strip())
+
+
         for i in range(0, len(post_list)):
-            post_dicts.append({'post_content': post_list[i], 'post_id':
-                id_list[i], 'post_author': author_list[i], 'post_date':
-                date_list[i], 'post_page': j, 'post_number': post_number})
+            post_dicts.append({'post_content':  post_list[i],
+                               'post_id':       id_list[i],
+                               'post_author':   author_list[i],
+                               'post_regdate':  reg_list[i],
+                               'post_date':     date_list[i],
+                               'post_page':     j,
+                               'post_number':   post_number})
             post_number += 1
 
         post_list = []
         id_list = []
         author_list = []
+        reg_list = []
         date_list = []
 
     return data, post_dicts
@@ -208,6 +218,10 @@ def create_xml(info, post_data):
         author_element = http.etree.Element("author")
         author_element.text = "%s" % post_data[i]['post_author']
         post_element.append(author_element)
+
+        regdate_element = http.etree.Element("regdate")
+        regdate_element.text = "%s" % post_data[i]['post_regdate']
+        post_element.append(regdate_element)
 
         date_element = http.etree.Element("date")
         date_element.text = "%s" % post_data[i]['post_date']

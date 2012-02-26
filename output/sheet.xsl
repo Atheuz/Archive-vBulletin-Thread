@@ -98,6 +98,9 @@
                                         <xsl:value-of select="author"/>
                                     </a>
                                     <br />
+                                    <xsl:text>Regdate: </xsl:text>
+                                    <xsl:value-of select="regdate"/>
+                                    <br />
                                     <xsl:text>Date: </xsl:text>
                                     <xsl:value-of select="date"/>
                                 </td>
