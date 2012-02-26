@@ -2,11 +2,17 @@
 
 import http
 import re
-import os
+import os, sys
 from lxml.html.clean import clean_html
 from lxml.html.clean import Cleaner
 from StringIO import StringIO
 import argparse
+
+# Convenience functions.
+def print_r(s):
+    sys.stdout.write("%s \r" % (" " * 50))
+    sys.stdout.write("%s \r" % s)
+    sys.stdout.flush()
 
 def login(user, password):
     http.jar.clear_expired_cookies()
@@ -87,7 +93,8 @@ def get_thread(thread_id):
     post_number = 1
 
     for j in pages:
-        print "At page #%d" % j
+        print_r("At page #%d" % j)
+        #print "At page #%d" % j
         k = new_urls % (thread_id, j)
         content_from_posts = http.get_html(k, cookies=True)
 
@@ -216,7 +223,7 @@ def create_xml(info, post_data):
     file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
     out = open("output\%s.xml" % file_title, "w")
     doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
-    print 'Done.'
+    print '\nDone.'
 
 def main():
     parser = argparse.ArgumentParser(description='Data mine a vBulletin thread,' \
