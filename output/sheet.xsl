@@ -115,7 +115,7 @@
                                     <xsl:value-of select="@id"/>
                                 </td>
                                 <td class="content">
-                                    <xsl:copy-of select="content"/>
+                                    <xsl:value-of select="content" disable-output-escaping="yes"/>
                                 </td>
                             </tr>
                         </xsl:if>
@@ -144,7 +144,7 @@
                                     <xsl:value-of select="@id"/>
                                 </td>
                                 <td class="content">
-                                    <xsl:copy-of select="content"/>
+                                    <xsl:value-of select="content" disable-output-escaping="yes"/>
                                 </td>
                             </tr>
                         </xsl:if>

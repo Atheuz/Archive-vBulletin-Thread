@@ -5,6 +5,7 @@ import re
 import os, sys
 from lxml.html.clean import clean_html
 from lxml.html.clean import Cleaner
+import lxml.html
 from StringIO import StringIO
 import argparse
 
@@ -54,7 +55,7 @@ def get_thread(thread_id):
     else:
         locked = False
 
-    original_poster = content.xpath('//dt[@class="author"]')[0].text_content()
+    original_poster = content.xpath('//dt[contains(@class, "author")]')[0].text_content()
 
     try:
         pages = content.xpath('//div[@class="pages top"]')[0].text_content()
@@ -101,15 +102,19 @@ def get_thread(thread_id):
 
 
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
-            current_post = i.text_content()
+            cleaner = Cleaner(style=True, comments=True, scripts=True,
+                    javascript=True, page_structure=True, links=True)
+            i = cleaner.clean_html(i)
+            current_post = lxml.html.tostring(i)#i.text_content()
             current_post = current_post.strip().encode('ascii', 'ignore')
             current_post = current_post.replace('\n', ' ')
             current_post = current_post.replace('\r', ' ')
             current_post = current_post.replace('\x00', '')
+            current_post = current_post.replace('<td class="postbody">','').replace('</td>','').strip()
             result = ' '.join(current_post.split())
 
-#            cleaner = Cleaner(style=True, comments=True, scripts=True,
-#                    javascript=True, page_structure=True, links=False)
+#            cleaner = Cleaner(style=False, comments=False, scripts=False,
+#                    javascript=False, page_structure=False, links=False)
 #            i = clean_html(i)
 #            i.tag = 'div'
 #            del i.attrib['class']
@@ -230,7 +235,7 @@ def create_xml(info, post_data):
         content_text = str(post_data[i]['post_content']).encode('ascii', 'ignore')
         #content_text = http.etree.CDATA(content_text)
         content_element = http.etree.Element("content")
-        content_element.text = content_text
+        content_element.text = http.etree.CDATA(content_text)
         post_element.append(content_element)
 
 
