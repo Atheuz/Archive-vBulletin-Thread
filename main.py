@@ -3,31 +3,44 @@
 import http
 import re
 import os, sys
+import lxml.html
 from lxml.html.clean import clean_html
 from lxml.html.clean import Cleaner
-import lxml.html
+from json import loads
 from StringIO import StringIO
 import argparse
 
 # Convenience functions.
+
+html_escape_table = {
+    "&": "&amp;",
+    ">": "&gt;",
+    "<": "&lt;",
+    '"': "&quot;"
+}
+
+def html_escape(text):
+    """Produce entities within text."""
+    return "".join(html_escape_table.get(c,c) for c in text)
+
 def print_r(s):
     sys.stdout.write("%s \r" % (" " * 50))
     sys.stdout.write("%s \r" % s)
     sys.stdout.flush()
 
-def login(user, password):
+def login():
+    config = loads(open("conf.json", "r").read())
+    user = config["Username"]
+    password = config["Password"]
     http.jar.clear_expired_cookies()
-    if any(cookie.domain == 'forums.somethingawful.com' and
-           cookie.name == 'bbuserid' for cookie in http.jar):
-        if any(cookie.domain == 'forums.somethingawful.com' and
-               cookie.name == 'bbpassword' for cookie in http.jar):
+    if any(cookie.domain == 'forums.somethingawful.com' and cookie.name == 'bbuserid' for cookie in http.jar):
+        if any(cookie.domain == 'forums.somethingawful.com' and cookie.name == 'bbpassword' for cookie in http.jar):
             return
         assert("malformed cookie jar")
-    http.get("http://forums.somethingawful.com/account.php", cookies=True,
-        post_data="action=login&username=%s&password=%s" % (user, password))
+    http.get("http://forums.somethingawful.com/account.php", cookies=True, post_data="action=login&username=%s&password=%s" % (user, password))
 
 def get_thread(thread_id):
-    login('***REMOVED***', '***REMOVED***')
+    login()
 
 ### THREAD INFORMATION START ###
 
@@ -37,46 +50,34 @@ def get_thread(thread_id):
 
     breadcrumbs = content.xpath('///div[@class="breadcrumbs"][1]//span[@class="mainbodytextlarge"]//a')
     if len(breadcrumbs) == 4:
-        forum = breadcrumbs[0].text_content()
-        board = breadcrumbs[1].text_content()
-        subboard = breadcrumbs[2].text_content()
+        forum, board, subboard, title = [x.text_content() for x in breadcrumbs]
         subsubboard = None
-        title = breadcrumbs[3].text_content()
     elif len(breadcrumbs) == 5:
-        forum = breadcrumbs[0].text_content()
-        board = breadcrumbs[1].text_content()
-        subboard = breadcrumbs[2].text_content()
-        subsubboard = breadcrumbs[3].text_content()
-        title = breadcrumbs[4].text_content()
+        forum, board, subboard, subsubboard, title = [x.text_content() for x in breadcrumbs]
 
-    locked = content.xpath('//ul[@class="postbuttons"]/li[3]/a/img/@src')[0]
-    if 'closed' in locked:
-        locked = True
-    else:
-        locked = False
+    locked = 'closed' in content.xpath('//ul[@class="postbuttons"]/li[2]/a/img/@src')[0]
 
     original_poster = content.xpath('//dt[contains(@class, "author")]')[0].text_content()
 
     try:
-        pages = content.xpath('//div[@class="pages top"]')[0].text_content()
+        pages = content.xpath('//div[@class="pages top"]/a[last()]')[0].text_content()
         pages = pages.encode('utf-8', 'ignore')
-        pages = re.search('(?<=Pages \()\w+(?=\))', pages).group()
+        pages = re.search("\d+", pages).group()
         pages = range(1,int(pages)+1)
-    except AttributeError:
+    except (AttributeError, IndexError):
         pages = [1]
 
-    data = {'thread_id': thread_id,
-            'forum': forum,
-            'board': board,
-            'subboard': subboard,
-            'title': title,
-            'locked': locked,
-            'op': original_poster,
-            'pages': pages,
-            'url': thread_url
+    data = {'thread_id'   : thread_id,
+            'forum'       : forum,
+            'board'       : board,
+            'subboard'    : subboard,
+            'subsubboard' : subsubboard,
+            'title'       : title,
+            'locked'      : locked,
+            'op'          : original_poster,
+            'pages'       : pages,
+            'url'         : thread_url
            }
-    if len(breadcrumbs) == 5:
-        data['subsubboard'] = subsubboard
 
 ### THREAD INFORMATION END ###
 
@@ -84,78 +85,59 @@ def get_thread(thread_id):
 
     new_urls = "http://forums.somethingawful.com/showthread.php?threadid=%s&pagenumber=%d"
 
-    post_list = []
-    id_list = []
+    post_list   = []
+    id_list     = []
     author_list = []
-    reg_list = []
-    date_list = []
-
-    post_dicts = []
-
+    reg_list    = []
+    date_list   = []
+    post_dicts  = []
     post_number = 1
 
     for j in pages:
-        print_r("At page #%d" % j)
-        #print "At page #%d" % j
+        print_r("At page #%d out of #%03d" % (j, pages[-1]))
+        
         k = new_urls % (thread_id, j)
         content_from_posts = http.get_html(k, cookies=True)
 
-
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
-            cleaner = Cleaner(style=True, comments=True, scripts=True,
-                    javascript=True, page_structure=True, links=True)
-            i = cleaner.clean_html(i)
-            current_post = lxml.html.tostring(i)#i.text_content()
-            current_post = current_post.strip().encode('ascii', 'ignore')
-            current_post = current_post.replace('\n', ' ')
-            current_post = current_post.replace('\r', ' ')
-            current_post = current_post.replace('\x00', '')
-            current_post = current_post.replace('<td class="postbody">','').replace('</td>','').strip()
-            result = ' '.join(current_post.split())
+            cleaner      = Cleaner(style=True, comments=True, scripts=True,
+                                   javascript=True, page_structure=True, links=True)
+            i            = cleaner.clean_html(i)
+            current_post = lxml.html.tostring(i)
+            current_post = current_post.strip() \
+                                       .encode('ascii', 'ignore') \
+                                       .replace('\n', ' ') \
+                                       .replace('\r', ' ') \
+                                       .replace('\x00', '') \
+                                       .replace('<td class="postbody">','') \
+                                       .replace('</td>','') \
+                                       .strip()
+            result       = ' '.join(current_post.split())
 
-#            cleaner = Cleaner(style=False, comments=False, scripts=False,
-#                    javascript=False, page_structure=False, links=False)
-#            i = clean_html(i)
-#            i.tag = 'div'
-#            del i.attrib['class']
-#            current_post = http.html.tostring(i, encoding='ascii')
-#            current_post = current_post.replace('\r', '')
-#            current_post = current_post.replace('\n', '')
-#            current_post = current_post.replace('\t', '')
-#            parser = http.html.HTMLParser()
-#            tree = http.html.parse(StringIO(current_post), parser)
-#            tree = cleaner.clean_html(tree)
-#            result = http.html.tostring(tree.getroot(), pretty_print=True, method="html")
             post_list.append(result)
 
-        for i in content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href'):
-            id_list.append(re.search('(?<=#post)\w+', i).group())
-
-        for i in content_from_posts.xpath('//dl[@class="userinfo"]/dt'):
-            author_list.append(i.text_content().strip())
-
-        for i in content_from_posts.xpath('//td[@class="postdate"]'):
-            date_list.append(re.search('\w{3}.+', i.text_content().strip()).group())
-
-        for i in content_from_posts.xpath('//dl[@class="userinfo"]/dd[@class="registered"]'):
-            reg_list.append(i.text_content().strip())
+        id_list     = [re.search('(?<=#post)\w+', x).group()                  for x in content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href')]
+        author_list = [x.text_content().strip()                               for x in content_from_posts.xpath('//dl[@class="userinfo"]/dt')]
+        date_list   = [re.search('\w{3}.+', x.text_content().strip()).group() for x in content_from_posts.xpath('//td[@class="postdate"]')]
+        reg_list    = [x.text_content().strip()                               for x in content_from_posts.xpath('//dl[@class="userinfo"]/dd[@class="registered"]')]
 
 
         for i in range(0, len(post_list)):
-            post_dicts.append({'post_content':  post_list[i],
-                               'post_id':       id_list[i],
-                               'post_author':   author_list[i],
-                               'post_regdate':  reg_list[i],
-                               'post_date':     date_list[i],
-                               'post_page':     j,
-                               'post_number':   post_number})
+            post_dicts.append({'post_content' :  post_list[i],
+                               'post_id'      :  id_list[i],
+                               'post_author'  :  author_list[i],
+                               'post_regdate' :  reg_list[i],
+                               'post_date'    :  date_list[i],
+                               'post_page'    :  j,
+                               'post_number'  :  post_number
+                              })
             post_number += 1
 
-        post_list = []
-        id_list = []
+        post_list   = []
+        id_list     = []
         author_list = []
-        reg_list = []
-        date_list = []
+        reg_list    = []
+        date_list   = []
 
     return data, post_dicts
 
@@ -208,45 +190,43 @@ def create_xml(info, post_data):
     thread_element.append(posts_element)
 
     for i in range(0, len(post_data)):
-        post_element = http.etree.Element("post", id="%s" %
-                post_data[i]["post_id"])
+        post_element         = http.etree.Element("post", id="%s" % post_data[i]["post_id"])
         posts_element.append(post_element)
 
-        number_element = http.etree.Element("number")
-        number_element.text = "%d" % post_data[i]['post_number']
+        number_element       = http.etree.Element("number")
+        number_element.text  = "%d" % post_data[i]['post_number']
         post_element.append(number_element)
 
-        page_element = http.etree.Element("page")
-        page_element.text = "%s" % post_data[i]['post_page']
+        page_element         = http.etree.Element("page")
+        page_element.text    = "%s" % post_data[i]['post_page']
         post_element.append(page_element)
 
-        author_element = http.etree.Element("author")
-        author_element.text = "%s" % post_data[i]['post_author']
+        author_element       = http.etree.Element("author")
+        author_element.text  = "%s" % post_data[i]['post_author']
         post_element.append(author_element)
 
-        regdate_element = http.etree.Element("regdate")
+        regdate_element      = http.etree.Element("regdate")
         regdate_element.text = "%s" % post_data[i]['post_regdate']
         post_element.append(regdate_element)
 
-        date_element = http.etree.Element("date")
-        date_element.text = "%s" % post_data[i]['post_date']
+        date_element         = http.etree.Element("date")
+        date_element.text    = "%s" % post_data[i]['post_date']
         post_element.append(date_element)
 
-        content_text = str(post_data[i]['post_content']).encode('ascii', 'ignore')
-        #content_text = http.etree.CDATA(content_text)
-        content_element = http.etree.Element("content")
+        content_text         = str(post_data[i]['post_content']).encode('ascii', 'ignore').replace('&#13;', '')
+        content_element      = http.etree.Element("content")
         content_element.text = http.etree.CDATA(content_text)
         post_element.append(content_element)
 
 
     file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
-    out = open("output\%s.xml" % file_title, "w")
+    out        = open("output\%s.xml" % file_title, "w")
     doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
     print '\nDone.'
 
 def main():
     parser = argparse.ArgumentParser(description='Data mine a vBulletin thread,' \
-            'specifically made for SomethingAwful.')
+            ' specifically made for SomethingAwful.')
     parser.add_argument('-tid', '--threadid', action='store',
             dest='thread_id', default=None, type=str, help='Set thread id.')
     parser.add_argument('-t', '--threadurl', action='store', dest='thread_url',
