@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import http
+import requests
 import re
 import os, sys
 import lxml.html
+import lxml.etree
 from lxml.html.clean import clean_html
 from lxml.html.clean import Cleaner
 from json import loads
@@ -27,26 +28,23 @@ def print_r(s):
     sys.stdout.write("%s \r" % (" " * 50))
     sys.stdout.write("%s \r" % s)
     sys.stdout.flush()
+    
+def get_html(session, url):
+    return lxml.html.fromstring(session.get(url).text)
 
-def login():
+def login(session):
     config = loads(open("conf.json", "r").read())
-    user = config["Username"]
-    password = config["Password"]
-    http.jar.clear_expired_cookies()
-    if any(cookie.domain == 'forums.somethingawful.com' and cookie.name == 'bbuserid' for cookie in http.jar):
-        if any(cookie.domain == 'forums.somethingawful.com' and cookie.name == 'bbpassword' for cookie in http.jar):
-            return
-        assert("malformed cookie jar")
-    http.get("http://forums.somethingawful.com/account.php", cookies=True, post_data="action=login&username=%s&password=%s" % (user, password))
+    payload = {"action":"login", "username":config["Username"], "password":config["Password"]}
+    session.post("http://forums.somethingawful.com/account.php", data=payload)
 
 def get_thread(thread_id):
-    login()
+    session = requests.Session()
+    login(session)
 
 ### THREAD INFORMATION START ###
 
     thread_url = "http://forums.somethingawful.com/showthread.php?threadid=%s" % thread_id
-    content = http.get_html(thread_url, cookies=True)
-    content = clean_html(content)
+    content = clean_html( get_html(session, thread_url) )
 
     breadcrumbs = content.xpath('///div[@class="breadcrumbs"][1]//span[@class="mainbodytextlarge"]//a')
     if len(breadcrumbs) == 4:
@@ -83,7 +81,7 @@ def get_thread(thread_id):
 
 ### POST INFORMATION START ###
 
-    new_urls = "http://forums.somethingawful.com/showthread.php?threadid=%s&pagenumber=%d"
+    new_url = "http://forums.somethingawful.com/showthread.php?threadid=%s&pagenumber=%d"
 
     post_list   = []
     id_list     = []
@@ -96,8 +94,8 @@ def get_thread(thread_id):
     for j in pages:
         print_r("At page #%d out of #%03d" % (j, pages[-1]))
         
-        k = new_urls % (thread_id, j)
-        content_from_posts = http.get_html(k, cookies=True)
+        k = new_url % (thread_id, j)
+        content_from_posts = get_html(session, k)
 
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
             cleaner      = Cleaner(style=True, comments=True, scripts=True,
@@ -144,27 +142,27 @@ def get_thread(thread_id):
 ### POST INFORMATION END ###
 
 def create_xml(info, post_data):
-    thread_element = http.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
+    thread_element = lxml.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
                                                   thread_locked     = "%s" % info['locked'],
                                                   thread_page_count = "%d" % info['pages'][-1],
                                                   thread_url        = "%s" % info['url'])
 
-    doc = http.etree.ElementTree(thread_element)
+    doc = lxml.etree.ElementTree(thread_element)
     root = doc.getroot()
-    root.addprevious(http.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
+    root.addprevious(lxml.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
 
-    breadcrumbs_element = http.etree.Element("breadcrumbs", thread_forum       = "%s" % info['forum'],
+    breadcrumbs_element = lxml.etree.Element("breadcrumbs", thread_forum       = "%s" % info['forum'],
                                                             thread_board       = "%s" % info['board'],
                                                             thread_subboard    = "%s" % info['subboard'],
                                                             thread_subsubboard = "%s" % info['subsubboard'],
                                                             thread_title       = "%s" % info['title'])
     thread_element.append(breadcrumbs_element)
 
-    posts_element = http.etree.Element("posts")
+    posts_element = lxml.etree.Element("posts")
     thread_element.append(posts_element)
 
     for i in range(0, len(post_data)):
-        post_element         = http.etree.Element("post", post_id             = "%s" % post_data[i]["post_id"],
+        post_element         = lxml.etree.Element("post", post_id             = "%s" % post_data[i]["post_id"],
                                                           post_thread_number  = "%d" % post_data[i]['post_number'],
                                                           post_thread_page    = "%d" % post_data[i]['post_page'],
                                                           post_author         = "%s" % post_data[i]['post_author'],
@@ -173,8 +171,8 @@ def create_xml(info, post_data):
         posts_element.append(post_element)
 
         content_text         = str(post_data[i]['post_content']).encode('ascii', 'ignore').replace('&#13;', '')
-        content_element      = http.etree.Element("content")
-        content_element.text = http.etree.CDATA(content_text)
+        content_element      = lxml.etree.Element("content")
+        content_element.text = lxml.etree.CDATA(content_text)
         post_element.append(content_element)
 
     file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
