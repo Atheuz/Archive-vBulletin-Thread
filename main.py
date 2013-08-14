@@ -185,25 +185,23 @@ def create_xml(info, post_data):
 def main():
     parser = argparse.ArgumentParser(description='Data mine a vBulletin thread,' \
             ' specifically made for SomethingAwful.')
-    parser.add_argument('-tid', '--threadid', action='store',
+    thread_group = parser.add_mutually_exclusive_group()
+    thread_group.add_argument('-tid', '--threadid', action='store',
             dest='thread_id', default=None, type=str, help='Set thread id.')
-    parser.add_argument('-t', '--threadurl', action='store', dest='thread_url',
+    thread_group.add_argument('-t', '--threadurl', action='store', dest='thread_url',
             default=None, type=str, help='Set thread url.')
     args = parser.parse_args()
-    thread_id = args.thread_id
-    thread_url = args.thread_url
 
     try:
         os.mkdir("output")
     except WindowsError:
         pass
 
-    if thread_id is not None and thread_url is None:
-        info, post_data = get_thread(thread_id)
+    if args.thread_id:
+        info, post_data = get_thread(args.thread_id)
         create_xml(info, post_data)
-    if thread_id is None and thread_url is not None:
-        thread_id = re.search('(?<=threadid=)\w+', thread_url).group()
-        info, post_data = get_thread(thread_id)
+    if args.thread_url:
+        info, post_data = get_thread(re.search('(?<=threadid=)\w+', args.thread_url).group())
         create_xml(info, post_data)
 
 if __name__ == '__main__':
