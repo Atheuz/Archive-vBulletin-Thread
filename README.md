@@ -4,7 +4,7 @@ Archive-vBulletin-Thread
 Create an XML file from a vBulletin thread. This XML file can then be displayed using attached xslt stylesheet.
 
 NOTE
-====
+----
 This is specifically made for SomethingAwful, and if you want to use it on a different vBulletin board,
 make sure that you change the appropriate urls in
 
@@ -12,6 +12,9 @@ make sure that you change the appropriate urls in
   2. sheet.xsl and output/sheet.xsl
   3. Plus anywhere else you can find it.
     
+
+Usage
+-----
 
 To use make a config file called conf.json with the following contents:
 
