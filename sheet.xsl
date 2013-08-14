@@ -55,31 +55,33 @@
             </head>
             <body>
                 <h2>
-                    <xsl:for-each select="thread/breadcrumbs/*">
-                        <xsl:value-of select="."/>
-                        <xsl:if test="position()!=last()">
-                            <xsl:text> > </xsl:text>
-                        </xsl:if>
-                        <xsl:if test="position()=last()">
-                            <xsl:text> ! </xsl:text>
-                        </xsl:if>
-                    </xsl:for-each>
+                    <xsl:value-of select="thread/breadcrumbs/@thread_forum"/>
+                    <xsl:text> > </xsl:text>
+                    <xsl:value-of select="thread/breadcrumbs/@thread_board"/>
+                    <xsl:text> > </xsl:text>
+                    <xsl:value-of select="thread/breadcrumbs/@thread_subboard"/>
+                    <xsl:text> > </xsl:text>
+                    <xsl:if test="thread/breadcrumbs/@thread_subsubboard/text() != None">
+                        <xsl:value-of select="thread/breadcrumbs/@thread_subsubboard"/>
+                        <xsl:text> > </xsl:text>
+                    </xsl:if>
+                    <xsl:value-of select="thread/breadcrumbs/@thread_title"/>
                 </h2>
                 <table>
                     <tr>
                         <td>
                             <xsl:text>Locked: </xsl:text>
-                            <xsl:value-of select="thread/locked"/>
+                            <xsl:value-of select="thread/@thread_locked"/>
                             <xsl:text> | </xsl:text>
                         </td>
                         <td>
                             <xsl:text>Pages: </xsl:text>
-                            <xsl:value-of select="thread/pages"/>
+                            <xsl:value-of select="thread/@thread_page_count"/>
                             <xsl:text> | </xsl:text>
                         </td>
                         <td>
                             <a>
-                                <xsl:attribute name="href"><xsl:value-of select="thread/url"/></xsl:attribute>
+                                <xsl:attribute name="href"><xsl:value-of select="thread/@thread_url"/></xsl:attribute>
                                 <xsl:text>Thread URL</xsl:text>
                             </a>
                         </td>
@@ -93,29 +95,29 @@
                                     <a>
                                         <xsl:attribute name="href">
                                             <xsl:text>http://forums.somethingawful.com/member.php?action=getinfo&amp;username=</xsl:text>
-                                            <xsl:value-of select="author"/>
+                                            <xsl:value-of select="@post_author"/>
                                         </xsl:attribute>
-                                        <xsl:value-of select="author"/>
+                                        <xsl:value-of select="@post_author"/>
                                     </a>
                                     <br />
                                     <xsl:text>Regdate: </xsl:text>
-                                    <xsl:value-of select="regdate"/>
+                                    <xsl:value-of select="@post_author_regdate"/>
                                     <br />
                                     <xsl:text>Date: </xsl:text>
-                                    <xsl:value-of select="date"/>
+                                    <xsl:value-of select="@post_date"/>
                                 </td>
                                 <td class="info2">
                                     <xsl:text>Post: </xsl:text>
-                                    <xsl:value-of select="number"/>
+                                    <xsl:value-of select="@post_thread_number"/>
                                     <br />
                                     <xsl:text>Page: </xsl:text>
-                                    <xsl:value-of select="page"/>
+                                    <xsl:value-of select="@post_thread_page"/>
                                     <br />
                                     <xsl:text>ID: </xsl:text>
-                                    <xsl:value-of select="@id"/>
+                                    <xsl:value-of select="@post_id"/>
                                 </td>
                                 <td class="content">
-                                    <xsl:copy-of select="content"/>
+                                    <xsl:value-of select="content" disable-output-escaping="yes"/>
                                 </td>
                             </tr>
                         </xsl:if>
@@ -125,26 +127,29 @@
                                     <a>
                                         <xsl:attribute name="href">
                                             <xsl:text>http://forums.somethingawful.com/member.php?action=getinfo&amp;username=</xsl:text>
-                                            <xsl:value-of select="author"/>
+                                            <xsl:value-of select="@post_author"/>
                                         </xsl:attribute>
-                                        <xsl:value-of select="author"/>
+                                        <xsl:value-of select="@post_author"/>
                                     </a>
                                     <br />
+                                    <xsl:text>Regdate: </xsl:text>
+                                    <xsl:value-of select="@post_author_regdate"/>
+                                    <br />
                                     <xsl:text>Date: </xsl:text>
-                                    <xsl:value-of select="date"/>
+                                    <xsl:value-of select="@post_date"/>
                                 </td>
                                 <td class="info2">
                                     <xsl:text>Post: </xsl:text>
-                                    <xsl:value-of select="number"/>
+                                    <xsl:value-of select="@post_thread_number"/>
                                     <br />
                                     <xsl:text>Page: </xsl:text>
-                                    <xsl:value-of select="page"/>
+                                    <xsl:value-of select="@post_thread_page"/>
                                     <br />
                                     <xsl:text>ID: </xsl:text>
-                                    <xsl:value-of select="@id"/>
+                                    <xsl:value-of select="@post_id"/>
                                 </td>
                                 <td class="content">
-                                    <xsl:copy-of select="content"/>
+                                    <xsl:value-of select="content" disable-output-escaping="yes"/>
                                 </td>
                             </tr>
                         </xsl:if>

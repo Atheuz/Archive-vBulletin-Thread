@@ -144,80 +144,38 @@ def get_thread(thread_id):
 ### POST INFORMATION END ###
 
 def create_xml(info, post_data):
-    thread_element = http.etree.Element("thread", id="%s" % info['thread_id'])
+    thread_element = http.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
+                                                  thread_locked     = "%s" % info['locked'],
+                                                  thread_page_count = "%d" % info['pages'][-1],
+                                                  thread_url        = "%s" % info['url'])
 
     doc = http.etree.ElementTree(thread_element)
     root = doc.getroot()
     root.addprevious(http.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
 
-    breadcrumbs_element = http.etree.Element("breadcrumbs")
+    breadcrumbs_element = http.etree.Element("breadcrumbs", thread_forum       = "%s" % info['forum'],
+                                                            thread_board       = "%s" % info['board'],
+                                                            thread_subboard    = "%s" % info['subboard'],
+                                                            thread_subsubboard = "%s" % info['subsubboard'],
+                                                            thread_title       = "%s" % info['title'])
     thread_element.append(breadcrumbs_element)
-
-    forum_element = http.etree.Element("forum")
-    forum_element.text = "%s" % info['forum']
-    breadcrumbs_element.append(forum_element)
-
-    board_element = http.etree.Element("board")
-    board_element.text = "%s" % info['board']
-    breadcrumbs_element.append(board_element)
-
-    subboard_element = http.etree.Element("subboard")
-    subboard_element.text = "%s" % info['subboard']
-    breadcrumbs_element.append(subboard_element)
-
-    if len(info) == 10:
-        subsubboard_element = http.etree.Element("subsubboard")
-        subsubboard_element.text = "%s" % info['subsubboard']
-        breadcrumbs_element.append(subsubboard_element)
-
-    title_element = http.etree.Element("title")
-    title_element.text = "%s" % info['title']
-    breadcrumbs_element.append(title_element)
-
-    locked_element = http.etree.Element("locked")
-    locked_element.text = "%s" % info['locked']
-    thread_element.append(locked_element)
-
-    pages_element = http.etree.Element("pages")
-    pages_element.text = "%d" % info['pages'][-1]
-    thread_element.append(pages_element)
-
-    url_element = http.etree.Element("url")
-    url_element.text = "%s" % info['url']
-    thread_element.append(url_element)
 
     posts_element = http.etree.Element("posts")
     thread_element.append(posts_element)
 
     for i in range(0, len(post_data)):
-        post_element         = http.etree.Element("post", id="%s" % post_data[i]["post_id"])
+        post_element         = http.etree.Element("post", post_id             = "%s" % post_data[i]["post_id"],
+                                                          post_thread_number  = "%d" % post_data[i]['post_number'],
+                                                          post_thread_page    = "%d" % post_data[i]['post_page'],
+                                                          post_author         = "%s" % post_data[i]['post_author'],
+                                                          post_author_regdate = "%s" % post_data[i]['post_regdate'],
+                                                          post_date           = "%s" % post_data[i]['post_date'])
         posts_element.append(post_element)
-
-        number_element       = http.etree.Element("number")
-        number_element.text  = "%d" % post_data[i]['post_number']
-        post_element.append(number_element)
-
-        page_element         = http.etree.Element("page")
-        page_element.text    = "%s" % post_data[i]['post_page']
-        post_element.append(page_element)
-
-        author_element       = http.etree.Element("author")
-        author_element.text  = "%s" % post_data[i]['post_author']
-        post_element.append(author_element)
-
-        regdate_element      = http.etree.Element("regdate")
-        regdate_element.text = "%s" % post_data[i]['post_regdate']
-        post_element.append(regdate_element)
-
-        date_element         = http.etree.Element("date")
-        date_element.text    = "%s" % post_data[i]['post_date']
-        post_element.append(date_element)
 
         content_text         = str(post_data[i]['post_content']).encode('ascii', 'ignore').replace('&#13;', '')
         content_element      = http.etree.Element("content")
         content_element.text = http.etree.CDATA(content_text)
         post_element.append(content_element)
-
 
     file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
     out        = open("output\%s.xml" % file_title, "w")
