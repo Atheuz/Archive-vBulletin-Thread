@@ -5,3 +5,6 @@ output/*
 *.bat
 *.log
 *.xml
+*.rar
+*.zip
+*.txt
