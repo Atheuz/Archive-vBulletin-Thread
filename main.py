@@ -74,8 +74,23 @@ def get_thread_information(session, thread_id):
            }
     
     return pages, data
+
+def clean_post(p):
+    cleaner      = Cleaner(style=True, comments=True, scripts=True,
+                           javascript=True, page_structure=True, links=True)
+    p            = cleaner.clean_html(p)
+    current_post = lxml.html.tostring(p)
+    current_post = current_post.strip() \
+                               .encode('ascii', 'ignore') \
+                               .replace('\n', ' ') \
+                               .replace('\r', ' ') \
+                               .replace('\x00', '') \
+                               .replace('<td class="postbody">','') \
+                               .replace('</td>','') \
+                               .strip()
+    return current_post
     
-def get_post_information(session, thread_id, pages, data):
+def get_post_information(session, thread_id, pages, data, continue_from=None):
     new_url = "http://forums.somethingawful.com/showthread.php?threadid=%s&pagenumber=%d"
 
     post_list   = []
@@ -85,28 +100,19 @@ def get_post_information(session, thread_id, pages, data):
     date_list   = []
     post_dicts  = []
     post_number = 1
+    
+    if continue_from is not None: 
+        print "Updating from page %s, post id %s" % (continue_from.xpath('./@post_thread_page')[0], continue_from.xpath('./@post_id')[0])
+        pages = pages[pages.index(int(continue_from.xpath('./@post_thread_page')[0])):]
 
-    for j in pages:
-        print_r("At page #%d out of #%03d" % (j, pages[-1]))
+    for p in pages:
+        print_r("At page #%d out of #%03d" % (p, pages[-1]))
         
-        k = new_url % (thread_id, j)
+        k = new_url % (thread_id, p)
         content_from_posts = get_html(session, k)
 
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
-            cleaner      = Cleaner(style=True, comments=True, scripts=True,
-                                   javascript=True, page_structure=True, links=True)
-            i            = cleaner.clean_html(i)
-            current_post = lxml.html.tostring(i)
-            current_post = current_post.strip() \
-                                       .encode('ascii', 'ignore') \
-                                       .replace('\n', ' ') \
-                                       .replace('\r', ' ') \
-                                       .replace('\x00', '') \
-                                       .replace('<td class="postbody">','') \
-                                       .replace('</td>','') \
-                                       .strip()
-            result       = ' '.join(current_post.split())
-
+            result = ' '.join(clean_post(i).split())
             post_list.append(result)
 
         id_list     = [re.search('(?<=#post)\w+', x).group()                  for x in content_from_posts.xpath('//td[@class="postdate"]/a[1]/@href')]
@@ -121,7 +127,7 @@ def get_post_information(session, thread_id, pages, data):
                                'post_author'  :  author_list[i],
                                'post_regdate' :  reg_list[i],
                                'post_date'    :  date_list[i],
-                               'post_page'    :  j,
+                               'post_page'    :  p,
                                'post_number'  :  post_number
                               })
             post_number += 1
@@ -141,48 +147,66 @@ def get_thread(thread_id, update=False):
     pages, data = get_thread_information(session, thread_id)
     
     if update:
-        content = lxml.etree.fromstring(open("output\%s.xml" % data["file_title"], "r").read())
-        last_post    = content.xpath('//post[position()=last()]/@post_thread_page')[0]
-        last_post_id = content.xpath('//post[position()=last()]/@post_id')[0]
-        #print last_post, last_post_id
-    return get_post_information(session, thread_id, pages, data)
+        content      = lxml.etree.fromstring(open("output\%s.xml" % data["file_title"], "r").read())
+        last_post    = content.xpath('//post[position()=last()]')[0]
+        data, post_dicts = get_post_information(session, thread_id, pages, data, continue_from=last_post)
+    else:
+        data, post_dicts = get_post_information(session, thread_id, pages, data)
+    
+    return data, post_dicts
+    
 
-def create_xml(info, post_data):
-    thread_element = lxml.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
-                                                  thread_locked     = "%s" % info['locked'],
-                                                  thread_page_count = "%d" % info['pages'][-1],
-                                                  thread_url        = "%s" % info['url'])
+def create_post_xml(post):
+    p = lxml.etree.Element("post", post_id             = "%s" % post["post_id"],
+                                   post_thread_number  = "%d" % post['post_number'],
+                                   post_thread_page    = "%d" % post['post_page'],
+                                   post_author         = "%s" % post['post_author'],
+                                   post_author_regdate = "%s" % post['post_regdate'],
+                                   post_date           = "%s" % post['post_date'])
+    content_text         = str(post['post_content']).encode('ascii', 'ignore').replace('&#13;', '')
+    content_element      = lxml.etree.Element("content")
+    content_element.text = lxml.etree.CDATA(content_text)
+    p.append(content_element)
+    return p
 
-    doc = lxml.etree.ElementTree(thread_element)
-    root = doc.getroot()
-    root.addprevious(lxml.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
+def create_xml(info, post_data, update=False):
+    if update:
+        parser = lxml.etree.XMLParser(remove_blank_text=True)
+        thread = lxml.etree.parse("output\%s.xml" % info["file_title"], parser)
+        last_post = thread.xpath('//post[position()=last()]')[0]
+        post_data = [create_post_xml(x) for x in post_data if x["post_number"] > int(last_post.xpath('./@post_thread_number')[0])]
+        posts = thread.xpath('//posts')[0]
+        for i in post_data:
+            posts.append(i)
+        
+        out = open("output\%s.xml" % info['file_title'], "w")
+        thread.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
+    else:
+        thread_element = lxml.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
+                                                      thread_locked     = "%s" % info['locked'],
+                                                      thread_page_count = "%d" % info['pages'][-1],
+                                                      thread_url        = "%s" % info['url'])
 
-    breadcrumbs_element = lxml.etree.Element("breadcrumbs", thread_forum       = "%s" % info['forum'],
-                                                            thread_board       = "%s" % info['board'],
-                                                            thread_subboard    = "%s" % info['subboard'],
-                                                            thread_subsubboard = "%s" % info['subsubboard'],
-                                                            thread_title       = "%s" % info['title'])
-    thread_element.append(breadcrumbs_element)
+        doc = lxml.etree.ElementTree(thread_element)
+        root = doc.getroot()
+        root.addprevious(lxml.etree.PI('xml-stylesheet', 'type="text/xsl" href="sheet.xsl"'))
 
-    posts_element = lxml.etree.Element("posts")
-    thread_element.append(posts_element)
+        breadcrumbs_element = lxml.etree.Element("breadcrumbs", thread_forum       = "%s" % info['forum'],
+                                                                thread_board       = "%s" % info['board'],
+                                                                thread_subboard    = "%s" % info['subboard'],
+                                                                thread_subsubboard = "%s" % info['subsubboard'],
+                                                                thread_title       = "%s" % info['title'])
+        thread_element.append(breadcrumbs_element)
 
-    for i in range(0, len(post_data)):
-        post_element         = lxml.etree.Element("post", post_id             = "%s" % post_data[i]["post_id"],
-                                                          post_thread_number  = "%d" % post_data[i]['post_number'],
-                                                          post_thread_page    = "%d" % post_data[i]['post_page'],
-                                                          post_author         = "%s" % post_data[i]['post_author'],
-                                                          post_author_regdate = "%s" % post_data[i]['post_regdate'],
-                                                          post_date           = "%s" % post_data[i]['post_date'])
-        posts_element.append(post_element)
+        posts_element = lxml.etree.Element("posts")
+        thread_element.append(posts_element)
 
-        content_text         = str(post_data[i]['post_content']).encode('ascii', 'ignore').replace('&#13;', '')
-        content_element      = lxml.etree.Element("content")
-        content_element.text = lxml.etree.CDATA(content_text)
-        post_element.append(content_element)
+        for p in post_data:
+            post_element = create_post_xml(p)
+            posts_element.append(post_element)
 
-    out        = open("output\%s.xml" % info['file_title'], "w")
-    doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
+        out        = open("output\%s.xml" % info['file_title'], "w")
+        doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
     print '\nDone.'
 
 def main():
@@ -205,7 +229,7 @@ def main():
     input_id = args.thread_id if args.thread_id else re.search('(?<=threadid=)\w+', args.thread_url).group()
 
     info, post_data = get_thread(input_id, update=args.update)
-    create_xml(info, post_data)
+    create_xml(info, post_data, update=args.update)
 
 if __name__ == '__main__':
     main()
