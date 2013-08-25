@@ -36,13 +36,8 @@ def login(session):
     config = loads(open("conf.json", "r").read())
     payload = {"action":"login", "username":config["Username"], "password":config["Password"]}
     session.post("http://forums.somethingawful.com/account.php", data=payload)
-
-def get_thread(thread_id):
-    session = requests.Session()
-    login(session)
-
-### THREAD INFORMATION START ###
-
+    
+def get_thread_information(session, thread_id):
     thread_url = "http://forums.somethingawful.com/showthread.php?threadid=%s" % thread_id
     content = clean_html( get_html(session, thread_url) )
 
@@ -71,16 +66,16 @@ def get_thread(thread_id):
             'subboard'    : subboard,
             'subsubboard' : subsubboard,
             'title'       : title,
+            'file_title'  : ''.join([x for x in title if x.isalpha() or x.isdigit() or x is ' ']),
             'locked'      : locked,
             'op'          : original_poster,
             'pages'       : pages,
             'url'         : thread_url
            }
-
-### THREAD INFORMATION END ###
-
-### POST INFORMATION START ###
-
+    
+    return pages, data
+    
+def get_post_information(session, thread_id, pages, data):
     new_url = "http://forums.somethingawful.com/showthread.php?threadid=%s&pagenumber=%d"
 
     post_list   = []
@@ -136,10 +131,21 @@ def get_thread(thread_id):
         author_list = []
         reg_list    = []
         date_list   = []
-
+        
     return data, post_dicts
 
-### POST INFORMATION END ###
+def get_thread(thread_id, update=False):
+    session = requests.Session()
+    login(session)
+
+    pages, data = get_thread_information(session, thread_id)
+    
+    if update:
+        content = lxml.etree.fromstring(open("output\%s.xml" % data["file_title"], "r").read())
+        last_post    = content.xpath('//post[position()=last()]/@post_thread_page')[0]
+        last_post_id = content.xpath('//post[position()=last()]/@post_id')[0]
+        #print last_post, last_post_id
+    return get_post_information(session, thread_id, pages, data)
 
 def create_xml(info, post_data):
     thread_element = lxml.etree.Element("thread", thread_id         = "%s" % info['thread_id'],
@@ -175,8 +181,7 @@ def create_xml(info, post_data):
         content_element.text = lxml.etree.CDATA(content_text)
         post_element.append(content_element)
 
-    file_title = ''.join([x for x in info['title'] if x.isalpha() or x.isdigit() or x is ' '])
-    out        = open("output\%s.xml" % file_title, "w")
+    out        = open("output\%s.xml" % info['file_title'], "w")
     doc.write(out, xml_declaration=True, encoding='utf-8', pretty_print=True)
     print '\nDone.'
 
@@ -188,19 +193,19 @@ def main():
             dest='thread_id', default=None, type=str, help='Set thread id.')
     thread_group.add_argument('-t', '--threadurl', action='store', dest='thread_url',
             default=None, type=str, help='Set thread url.')
+    parser.add_argument('-u', '--update', action='store_true', dest='update', 
+            default=False, help='Set to update')
     args = parser.parse_args()
 
     try:
         os.mkdir("output")
     except WindowsError:
         pass
+        
+    input_id = args.thread_id if args.thread_id else re.search('(?<=threadid=)\w+', args.thread_url).group()
 
-    if args.thread_id:
-        info, post_data = get_thread(args.thread_id)
-        create_xml(info, post_data)
-    if args.thread_url:
-        info, post_data = get_thread(re.search('(?<=threadid=)\w+', args.thread_url).group())
-        create_xml(info, post_data)
+    info, post_data = get_thread(input_id, update=args.update)
+    create_xml(info, post_data)
 
 if __name__ == '__main__':
     main()
