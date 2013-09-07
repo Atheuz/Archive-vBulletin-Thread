@@ -8,3 +8,7 @@ output/*
 *.rar
 *.zip
 *.txt
+*.diff
+http.py
+get_authors.py
+conf.json

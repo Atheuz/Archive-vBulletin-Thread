@@ -10,27 +10,7 @@ from lxml.html.clean import Cleaner
 from json import loads
 from StringIO import StringIO
 import argparse
-
-# Convenience functions.
-
-html_escape_table = {
-    "&": "&amp;",
-    ">": "&gt;",
-    "<": "&lt;",
-    '"': "&quot;"
-}
-
-def html_escape(text):
-    """Produce entities within text."""
-    return "".join(html_escape_table.get(c,c) for c in text)
-
-def print_r(s):
-    sys.stdout.write("%s \r" % (" " * 50))
-    sys.stdout.write("%s \r" % s)
-    sys.stdout.flush()
-    
-def get_html(session, url):
-    return lxml.html.fromstring(session.get(url).text)
+from util import convenience
 
 def login(session):
     config = loads(open("conf.json", "r").read())
@@ -39,7 +19,7 @@ def login(session):
     
 def get_thread_information(session, thread_id):
     thread_url = "http://forums.somethingawful.com/showthread.php?threadid=%s" % thread_id
-    content = clean_html( get_html(session, thread_url) )
+    content = clean_html( convenience.get_html(session, thread_url) )
 
     breadcrumbs = content.xpath('///div[@class="breadcrumbs"][1]//span[@class="mainbodytextlarge"]//a')
     if len(breadcrumbs) == 4:
@@ -106,10 +86,10 @@ def get_post_information(session, thread_id, pages, data, continue_from=None):
         pages = pages[pages.index(int(continue_from.xpath('./@post_thread_page')[0])):]
 
     for p in pages:
-        print_r("At page #%d out of #%03d" % (p, pages[-1]))
+        convenience.print_r("At page #%d out of #%03d" % (p, pages[-1]))
         
         k = new_url % (thread_id, p)
-        content_from_posts = get_html(session, k)
+        content_from_posts = convenience.get_html(session, k)
 
         for i in content_from_posts.xpath('//td[@class="postbody"]'):
             result = ' '.join(clean_post(i).split())
